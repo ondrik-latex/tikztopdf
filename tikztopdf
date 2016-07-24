@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Check the number of command-line arguments
+if [ \( "$#" -ne 1 \) ] ; then
+	echo "usage: ${0} <infile>"
+	exit 1
+fi
+
+if [ $(uname) = "Linux" ]; then
+    pathCmd="readlink -f"
+elif [ $(uname) = "Darwin" ]; then
+    pathCmd="stat -f %N"
+else
+    pathCmd="realpath"
+fi
+
+TMPFILE=$(mktemp /tmp/tikz.XXXXXXXXXXX)
+
+echo "FILE = ${TMPFILE}"
+
+# header
+cat > ${TMPFILE} <<EOF 
+\documentclass[12pt]{article}
+\usepackage{tikz}
+\usepackage{pgf}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment[]{tikzpicture}
+\PreviewEnvironment[]{pgfpicture}
+\begin{document}
+EOF
+
+# body
+cat ${1} >> ${TMPFILE}
+
+# footer
+cat >> ${TMPFILE} <<EOF 
+
+\end{document}
+EOF
+
+JOBNAME="$(basename ${1})"
+JOBNAME="${JOBNAME%.*}"
+
+# run LaTeX
+LATEX="pdflatex -shell-escape -halt-on-error -file-line-error -interaction nonstopmode -output-directory . -jobname ${JOBNAME}"
+
+${LATEX} ${TMPFILE}
